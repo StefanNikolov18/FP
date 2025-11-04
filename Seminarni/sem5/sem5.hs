@@ -208,3 +208,58 @@ fromInt n
 toInt :: Nat -> Int
 toInt Zero = 0
 toInt (Succ x) = 1 + toInt x
+
+{-
+Задача 05 - Верига
+Напишете потребителски тип верига (Chain), която наподобява списък, но позволява константно време на 
+операцията конкатенация на две вериги. За целта напишете 3 конструктора - Empty представляващ празна верига,
+ Singleton представляващ верига, съдържаща само 1 елемент и Append представляващ верига, изградена от 2 други вериги.
+  Напишете следните функции:
+
+(<:) и (>:) - приемат елемент и верига и добавят елемента съответно в началото и края на веригата
+headChain - връща първия елемент на верига, ако тя не е празна
+tailChain - приема верига и връща нова верига, която съдържа елементите от подадената в същия ред, но без първия. 
+Не е задължително новата верига да има същата структура като подадената
+append - конкатенира две вериги
+mapChain - аналог на map за списъци, но за верига
+foldlChain - аналог на foldl за списъци, но за верига
+toList - приема верига и връща списък от елементите на веригата в същия ред
+listify - приема верига и връща нова верига, съдържаща същите елементи като подадената, но с променена структура - 
+тя трябва да наподобява тази на списъка и изискването е всеки ляв елемент на Append верига да бъде Singleton 
+(ако веригата не е празна разбира се)
+-}
+
+
+data Chain a = Empty | Singleton a | Append (Chain a) (Chain a)
+    deriving Show
+
+(<:) :: a -> Chain a -> Chain a
+x <: Empty = Singleton x
+x <: Singleton y = Append (Singleton x) (Singleton y)
+x <: Append c1 c2 = Append (x <: c1) c2
+
+(>:) :: a -> Chain a -> Chain a
+x >: Empty = Singleton x
+x >: Singleton y = Append (Singleton y) (Singleton x)
+x >: Append c1 c2 = Append c1 (x >: c2)
+
+headChain :: Chain a -> Maybe a
+headChain Empty = Nothing
+headChain (Singleton x) = Just x
+headChain (Append c1 c2) = headChain c1
+
+tailChain :: Chain a -> Chain a
+tailChain (Append (Singleton x) c2)= c2
+tailChain (Append c1 c2) = Append (tailChain c1) c2 
+
+
+append :: Chain a -> Chain a -> Chain a
+append c Empty = c
+append c (Singleton x) = Append c (Singleton x)
+append c (Append c1 c2) = Append (append c c1) c2
+
+mapChain :: (a -> a) -> Chain a -> Chain a
+mapChain _ Empty = Empty
+mapChain f (Singleton x) = Singleton (f x)
+mapChain f (Append x y) = Append (mapChain f x) (mapChain f y)
+
