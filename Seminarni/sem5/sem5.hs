@@ -1,0 +1,210 @@
+import Prelude hiding (Maybe,Just,Nothing,maybe,mapMaybe,lookup,Either,Left,Right,either)
+
+--1)
+{-Задача 01 - Типа Maybe
+Напишете своя версия на типа Maybe и за нея напишете следните функции:
+
+isJust/isNothing - проверява дали типа е Just/Nothing
+fromJust - приема стойност от тип Maybe и ако тя е Just връща стойността в нея
+fromMaybe - приема стойност по подразбиране и стойност от тип Maybe. Ако вторият аргумент е Just, 
+то функцията връща стойността му, в противен случай връща стойността по подразбиране
+maybe - приема стойност по подразбиране, едноместна функция f и стойност от тип Maybe. 
+Ако третият аргумент е Just, то функцията да прилага f върху стойността, в противен случай да върне стойността
+ по подразбиране
+catMaybes - приема списък от стойности от тип Maybe и връща списък от всички Just стойности
+mapMaybe - приема функция f на един аргумент, която връща стойност от тип Maybe и списък. 
+Функцията да прилага f над всички елементи и като резултат да върне само получените Just стойности
+lookup - търси стойност в асоциативен списък по подаден ключ. Ако ключът не бъде намерен, връща Nothing
+-}
+data Maybe a = Just a | Nothing 
+    deriving Show
+
+isJust :: Maybe a -> Bool
+isJust Nothing = False
+isJust _ = True
+
+isNothing :: Maybe a -> Bool
+isNothing x = not $ isJust x 
+
+fromJust :: Maybe a -> a
+fromJust (Just x) = x
+
+fromMaybe :: a -> Maybe a -> a
+fromMaybe x Nothing = x
+fromMaybe _ (Just y) = y
+
+maybe :: a -> (a -> a) -> Maybe a -> a
+maybe x _ Nothing = x
+maybe _ f (Just y) = f y
+
+
+catMaybes :: [Maybe a] -> [a]
+catMaybes = map fromJust . filter isJust 
+
+mapMaybes :: (a -> Maybe b) -> [a] -> [b]
+mapMaybes f = catMaybes . map f
+
+
+lookup :: Eq a => a -> [(a,b)] -> Maybe b
+lookup key [] = Nothing
+lookup key ((l,r): xs)
+    | key == l = Just r
+    | otherwise = lookup key xs
+
+
+{-
+Задача 02 - Типа Either
+Either is what's right or whatever's left
+
+Напишете своя версия на типа Either и за нея напишете следните функции:
+
+isLeft/isRight - проверява дали типа е Left/Right
+fromLeft/fromRight - приема стойност по подразбиране и стойност от тип Either. Ако вторият аргумент е Left/Right, то функцията връща стойността му, в противен случай връща стойността по подразбиране
+either - приема две едноместни функции f и g и стойност от тип Either. Ако третият аргумент е Left, то функцията да прилага f върху стойността иначе да прилага g
+lefts/rights - приема списък от стойностти от тип Either и връща списък от всички Left/Right стойности
+partitionEithers - приема списък от стойностти от тип Either и връща наредена двойка от списъци, съдържащи съответно всички Left и всички Right стойности
+За референция, вижте функциите от модула Data.Either
+-}
+
+data Either a b = Left a | Right b
+    deriving Show
+
+isLeft :: Either a b -> Bool
+isLeft (Left _) = True
+isLeft _ = False
+
+isRight :: Either a b -> Bool
+isRight x = not $ isLeft x
+
+fromLeft :: a -> Either a b -> a
+fromLeft _ (Left x) = x
+fromLeft x (Right _) = x 
+
+fromRight :: b -> Either a b -> b
+fromRight x (Left _) = x
+fromRight _ (Right x) = x
+
+either :: (a -> c) -> (b -> c) -> Either a b -> c
+either f _ (Left x) = f x
+either _ g (Right x) = g x
+
+eitherToMaybeR :: Either a b -> Maybe b
+eitherToMaybeR (Left _) = Nothing
+eitherToMaybeR (Right x) = Just x
+
+eitherToMaybeL :: Either a b -> Maybe a
+eitherToMaybeL (Left x) = Just x
+eitherToMaybeL (Right _) = Nothing
+
+lefts :: [Either a b] -> [a]
+lefts = mapMaybes eitherToMaybeL 
+
+rights :: [Either a b] -> [b]
+rights = mapMaybes eitherToMaybeR
+
+partitionEithers :: [Either a b] -> ([a],[b])
+partitionEithers l = 
+    let
+        left = [x | Left x <- l]
+        right = [y | Right y <- l]
+    in (left,right) 
+
+{-
+Задача 03 - Непразен списък
+Напишете своя версия на типа NonEmpty, представляващ непразен списък. Използвайте (:|) за конструктор на типа. За него напишете следните функции:
+
+fromList - конвертира списък към непразен списък, ако е възможно. Използвайте типа Maybe
+asList - конвертира непразен списък към обикновен списък
+mapNE, foldrNE, foldr1NE, maximumNE - аналог на съответните функции за списъци, но за непразен списък
+mean и median - по подаден непразен списък връщат съответно средното и медианата на списъка
+repeatNE - приема елемент x и генерира безкраен непразен списък съставен от x
+iterateNE - приема функция на 1 аргумент f и елемент x. Функцията да генерира безкраен непразен списък от приложенията на f върху x
+cycleNE - приема непразен списък и генерира безкраен непразен списък съставен от повтаряне на елементите на подадения списък
+-}
+
+data NonEmpty a = a :| [a]
+    deriving Show
+
+fromList :: [a] -> Maybe (NonEmpty a)
+fromList [] = Nothing
+fromList (x : xs) = Just $ x :| xs 
+
+asList :: NonEmpty a -> [a]
+asList (x :| xs) = x : xs
+
+mapNE :: (a -> b) -> NonEmpty a -> NonEmpty b
+mapNE f (x :| xs) = f x :| map f xs
+
+
+foldrNE :: (a -> b -> b) -> b ->  NonEmpty a -> b
+foldrNE op z (x :| xs) = op x (foldr op z xs)
+
+foldr1NE :: (a -> a -> a) -> NonEmpty a -> a
+foldr1NE op (x :| xs) = foldr1 op (x:xs)
+
+mean :: Fractional a => NonEmpty a -> a
+mean l@(x :| xs) =
+    let total = foldr (+) x xs
+        cnt = fromIntegral (1 + length xs)
+    in total/cnt
+
+quickSort :: Ord a => [a] -> [a]
+quickSort [] = []
+quickSort (x : xs) =
+    let pivot = x
+        left = [x | x <- xs , x < pivot]
+        right = [y | y <- xs , y >= pivot]
+    in quickSort left ++ [pivot] ++ quickSort right
+
+
+median :: (Fractional a ,Ord a) => NonEmpty a -> a
+median (x :| xs) =
+    let arr = quickSort (x:xs)
+        size = (1 + length xs)
+    in if even size
+        then 
+            let i = size `div` 2
+            in (arr !! (i - 1) + arr !! i) / 2
+        else 
+            arr !! (size `div` 2)
+
+
+repeatNE :: a -> NonEmpty a
+repeatNE x = x :| repeat x
+
+iterateNE :: (a -> a) -> a -> NonEmpty a
+iterateNE f x = x :| iterate f (f x)
+
+cycleNE :: NonEmpty a -> [a]
+cycleNE (x :| xs) = cycle (x : xs)
+
+{-
+Задача 04 - Естествено число
+Напишете потребителски тип Nat, представляващ естествено число. Чрез него напишете следните функции:
+
+plus - събира 2 естествени числа
+multiply - умножава 2 естествени числа
+fromInt - конвертира цяло число към естествено, ако е възможно. Използвайте типа Maybe
+toInt - конвертира естествено число към цяло
+-}
+
+data Nat = Zero | Succ Nat deriving Show
+
+plus :: Nat -> Nat -> Nat
+plus Zero y = y
+plus (Succ x) y = plus x (Succ y)
+
+multiply :: Nat -> Nat -> Nat
+multiply Zero y = Zero
+multiply (Succ Zero) y = y
+multiply (Succ x) y = plus y (multiply x y)
+ 
+fromInt :: Int -> Maybe Nat
+fromInt n
+    | n < 0 = Nothing
+    | n == 0 = Just Zero
+    | n > 0 = Just $ Succ $ fromJust $ fromInt (n - 1)
+
+toInt :: Nat -> Int
+toInt Zero = 0
+toInt (Succ x) = 1 + toInt x
