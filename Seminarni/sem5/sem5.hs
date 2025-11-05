@@ -263,3 +263,102 @@ mapChain _ Empty = Empty
 mapChain f (Singleton x) = Singleton (f x)
 mapChain f (Append x y) = Append (mapChain f x) (mapChain f y)
 
+foldlChain :: (b -> a -> b) ->b -> Chain a -> b 
+foldlChain _ nv Empty  = nv
+foldlChain op nv (Singleton x) = nv `op` x 
+foldlChain op nv (Append c1 c2) =
+    let acc = foldlChain op nv c1
+    in foldlChain op acc c2
+
+toList :: Chain a -> [a]
+toList Empty = []
+toList (Singleton x) = [x]
+toList (Append c1 c2) = toList c1 ++ toList c2  
+
+listify :: Chain a -> Chain a
+listify Empty = Empty
+listify (Singleton x) = Singleton x
+listify (Append c1 c2) = appendRight (listify c1) (listify c2)
+    where
+        appendRight :: Chain a -> Chain a -> Chain a
+        appendRight Empty ys = ys
+        appendRight (Singleton x) ys = Append (Singleton x) ys
+        appendRight (Append x y) ys = Append x (appendRight y ys)
+
+{-
+Задача 06 - Валидация и създаване на студенти
+Напишете запис (record) Student, който представлява студент в университет.
+ Един студент съдържа факултетен номер, име, имейл и телефонен номер, който обаче не е задължителен.
+
+Напишете функция createStudent, която приема необходимите данни на един студент, 
+валидира ги и в случай на успех връща новосъздадения студент. Валидациите са следните:
+
+факултетният номер трябва да има дължина от точно 10 символа
+името трябва да се състои от 3 думи - първо, бащино и фамилно име
+имейлът трябва да съдържа един символ @ и поне един символ . след него
+телефонният номер трябва да започва с 0 и да има дължина от точно 10 символа
+Ако някои от тези валидации не са успешни, функцията да връща непразен списък,
+ съдържащ подходящи съобщения спрямо вида на грешките (свободни сте да изберете формата на съобщенията).
+-}
+
+data Student = Student{
+    fn :: String,
+    name :: String,
+    email :: String,
+    phone :: Maybe String
+
+} deriving Show
+
+data ValidationError
+  = InvalidFnError
+  | InvalidNameError
+  | InvalidEmailError
+  | InvalidPhoneError
+  deriving (Show)
+
+isValidFn :: String -> Bool
+isValidFn (x : xs) = (1 + length xs) == 10
+
+isValidName :: String -> Bool
+isValidName name = cntWhiteSpaces name == 2
+    where
+        cntWhiteSpaces :: String -> Int
+        cntWhiteSpaces [] = 0
+        cntWhiteSpaces (x : xs)
+            | x == ' ' = 1 + cntWhiteSpaces xs
+            | otherwise = cntWhiteSpaces xs
+
+
+isValidEmail :: String -> Bool
+isValidEmail  = isValidEmailIter False False
+    where
+        isValidEmailIter :: Bool -> Bool -> String -> Bool
+        isValidEmailIter seenAt seenPoint [] = seenAt && seenPoint
+        isValidEmailIter seenAt seenPoint (x : xs)
+            | x == '@' && not seenAt = isValidEmailIter True seenPoint xs
+            | x == '@' && seenAt = False
+            | x == '.' && seenAt = isValidEmailIter seenAt True xs
+            | x == '.' && seenPoint = False
+            | otherwise = isValidEmailIter seenAt seenPoint xs
+
+
+isValidPhone :: Maybe String -> Bool
+isValidPhone Nothing = True
+isValidPhone (Just (x : xs)) =
+    let l = (1 + length xs)
+    in x == '0' && l == 10
+
+createStudent :: String -> String -> String -> Maybe String -> Either [ValidationError] Student
+createStudent fn name email phone = 
+    let
+        errors =
+            [InvalidFnError | not (isValidFn fn)]++
+             [ InvalidNameError | not (isValidName name) ] ++
+            [ InvalidEmailError| not (isValidEmail email) ] ++
+            [ InvalidPhoneError| not (isValidPhone phone) ]
+    in
+        if null errors
+            then Right (Student fn name email phone)
+            else Left errors
+
+
