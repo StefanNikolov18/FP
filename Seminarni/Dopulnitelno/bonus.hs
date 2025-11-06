@@ -12,7 +12,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 -- Задача 1: Да се дефинират типове Suit и Rank
-data Suit = Hearts | Diamonds | Clubs | Spades deriving (Eq,Show)
+data Suit = Clubs | Diamonds | Hearts | Spades deriving (Eq, Show, Ord)
 type Rank = Int
 
 -- Задача 2: Да се дефинира тип Card, който има следните полета: rank :: Rank, suit :: Suit
@@ -114,6 +114,8 @@ splitCardsNTimes c 0  = c
 splitCardsNTimes cards n = 
     let list = [1,5 ..]
     in splitCardsNTimesIter 0 list cards n 
+
+    
 -- Задача 10: Да се напише функция, която раздава карти (приемете, че веднага е имало обявяване)
 giveCards :: [Card] -> Int -> [Card]
 giveCards [] _ = []
@@ -149,5 +151,79 @@ playersA =
     -- Ако играчът няма възможност да даде карта с по-висок ранк от същата боя, трябва да даде картата с най-нисък ранк от тази боя
     -- Ако играчът няма възможност да даде карта от същата боя, трябва да даде картата с най-нисък ранк в ръката си
     -- Ако има повече от една карта с най-нисък ранк да приоризира боите както в стандартна игра на белот
+isSameSuitCard :: Suit -> Card ->  Bool
+isSameSuitCard suit card = getSuit card == suit
+
+isHigherRankCard :: Rank -> Card -> Bool
+isHigherRankCard rank card = getRank card > rank
+
+higherRank :: Card -> Card -> Bool
+higherRank c1 c2 = getRank c1 > getRank c2
+
+lowerRank :: Card -> Card -> Bool
+lowerRank c1 c2 = getRank c1 < getRank c2
+
+getCardRankByOrder :: (Card -> Card -> Bool) -> [Card] -> Maybe Card
+getCardRankByOrder _ [] = Nothing
+getCardRankByOrder pred (c : cs) = getCardRankByOrderHelper c pred cs
+    where 
+        getCardRankByOrderHelper :: Card -> (Card -> Card -> Bool) -> [Card] -> Maybe Card
+        getCardRankByOrderHelper highest _ [] = Just highest
+        getCardRankByOrderHelper highest pred (x : xs)
+            | x `pred` highest =  getCardRankByOrderHelper x pred xs
+            | otherwise = getCardRankByOrderHelper highest pred xs
+
+getCardFromPlayerHand :: Player -> Card -> Maybe Card
+getCardFromPlayerHand player = getSpecialCardFromHand (getHand player)
+    where
+        getSpecialCardFromHand :: [Card] -> Card -> Maybe Card
+        getSpecialCardFromHand [] _ = Nothing
+        getSpecialCardFromHand hand card =
+             let
+                cardsWithSameSuit = filter (isSameSuitCard $ getSuit card) hand
+                cardsWithHighestRank = filter (isHigherRankCard $ getRank card) hand
+                cardsWithBoth = filter (isHigherRankCard $ getRank card) (filter (isSameSuitCard (getSuit card)) hand) --filter(filter)
+            in 
+                if not $ null cardsWithBoth  
+                then getCardRankByOrder higherRank cardsWithBoth
+                else if null cardsWithSameSuit 
+                    then getCardRankByOrder lowerRank hand 
+                    else getCardRankByOrder lowerRank cardsWithSameSuit
+
+
 -- Задача 12: Да се напише функция, която преценя кой играч е взел ръката. Предполагаме, че първия играч в списъка е бил под ръка
+getGreaterCardByRank :: [Card] -> Card
+getGreaterCardByRank (x : xs) = getGreaterCardByRankHelper x xs
+    where
+        getGreaterCardByRankHelper :: Card -> [Card] -> Card
+        getGreaterCardByRankHelper greater [] = greater
+        getGreaterCardByRankHelper greater (c : cs)
+            | getRank c > getRank greater = getGreaterCardByRankHelper c cs
+            | otherwise = getGreaterCardByRankHelper greater cs
+
+isSameSuit :: Card -> Card -> Bool
+isSameSuit c1 c2 = getSuit c1 == getSuit c2
+
+isGreaterCard :: Card -> Card -> Bool
+isGreaterCard c1 c2 = getRank c1 > getRank c2
+
+whoTakeTheHand :: [Player] -> Maybe Player
+whoTakeTheHand [] = Nothing
+whoTakeTheHand (p:ps) = whoTakeTheHandHelper (head (getHand p)) p ps
+    where
+        whoTakeTheHandHelper :: Card -> Player ->[Player] -> Maybe Player
+        whoTakeTheHandHelper greaterCard beater [] = Just beater
+        whoTakeTheHandHelper greaterCard beater (x : xs) = 
+            let 
+                filteredCardsXBySuit = filter (isSameSuit greaterCard) (getHand x)
+            in 
+                if null filteredCardsXBySuit
+                    then whoTakeTheHandHelper greaterCard beater xs
+                    else 
+                        let xGreaterCard = getGreaterCardByRank filteredCardsXBySuit
+                        in 
+                            if isGreaterCard xGreaterCard greaterCard
+                            then  whoTakeTheHandHelper xGreaterCard x xs
+                            else  whoTakeTheHandHelper greaterCard beater xs
+
 -- Задача 13: Да се напише функция, която према ръка и играчите и размества списъка така, че взелият играч да е под ръка
