@@ -107,7 +107,7 @@ takeWhile pred (x : xs)
     | otherwise = []
 
 dropWhile :: (a -> Bool) -> [a] -> [a]
-dropWhile _ [] = []
+dropWhile   _ [] = []
 dropWhile pred (x : xs)
     | pred x = dropWhile pred xs
     | otherwise = x : xs

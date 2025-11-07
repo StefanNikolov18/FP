@@ -226,4 +226,10 @@ whoTakeTheHand (p:ps) = whoTakeTheHandHelper (head (getHand p)) p ps
                             then  whoTakeTheHandHelper xGreaterCard x xs
                             else  whoTakeTheHandHelper greaterCard beater xs
 
--- Задача 13: Да се напише функция, която према ръка и играчите и размества списъка така, че взелият играч да е под ръка
+-- Задача 13: Да се напише функция, която према ръка и играчите и размества списъка така,
+-- че взелият играч да е под ръка
+
+underHand :: [Card] -> [Player] -> [Player]
+underHand _ [] = []
+underHand kompots persons = underHand (getRol) (whoTakeTheHand)
+
