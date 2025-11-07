@@ -263,12 +263,23 @@ mapChain _ Empty = Empty
 mapChain f (Singleton x) = Singleton (f x)
 mapChain f (Append x y) = Append (mapChain f x) (mapChain f y)
 
-foldlChain :: (b -> a -> b) ->b -> Chain a -> b 
-foldlChain _ nv Empty  = nv
-foldlChain op nv (Singleton x) = nv `op` x 
-foldlChain op nv (Append c1 c2) =
-    let acc = foldlChain op nv c1
-    in foldlChain op acc c2
+foldrChain :: (b -> a -> b) ->b -> Chain a -> b 
+foldrChain _ nv Empty  = nv
+foldrChain op nv (Singleton x) = nv `op` x 
+foldrChain op nv (Append c1 c2) =
+    let acc = foldrChain op nv c1
+    in foldrChain op acc c2
+
+foldlChain :: (b -> a -> b) -> b -> Chain a -> b 
+foldlChain op nv chain  = foldlChainIter op nv [chain]
+    where
+        foldlChainIter :: (b -> a -> b) -> b -> [Chain a] -> b
+        foldlChainIter op nv [] = nv
+        foldlChainIter op nv (Empty: cs) = foldlChainIter op nv cs
+        foldlChainIter op nv ((Singleton x) : cs) = foldlChainIter op (op nv x) cs
+        foldlChainIter op nv ((Append c1 c2) : cs) = foldlChainIter op nv (c1:c2:cs)
+
+
 
 toList :: Chain a -> [a]
 toList Empty = []
@@ -319,6 +330,8 @@ data ValidationError
 isValidFn :: String -> Bool
 isValidFn (x : xs) = (1 + length xs) == 10
 
+--words String - splitva go na tokeni
+
 isValidName :: String -> Bool
 isValidName name = cntWhiteSpaces name == 2
     where
@@ -328,6 +341,9 @@ isValidName name = cntWhiteSpaces name == 2
             | x == ' ' = 1 + cntWhiteSpaces xs
             | otherwise = cntWhiteSpaces xs
 
+
+isValidNameBetter :: String -> Bool
+isValidNameBetter name = length (words name) == 2
 
 isValidEmail :: String -> Bool
 isValidEmail  = isValidEmailIter False False
@@ -341,6 +357,11 @@ isValidEmail  = isValidEmailIter False False
             | x == '.' && seenPoint = False
             | otherwise = isValidEmailIter seenAt seenPoint xs
 
+--dropWhile
+isValidEmailBetter :: String -> Bool
+isValidEmailBetter  email =
+    let rest = dropWhile (/= '@') email
+    in not (null rest) && '.' `elem` tail rest   
 
 isValidPhone :: Maybe String -> Bool
 isValidPhone Nothing = True
