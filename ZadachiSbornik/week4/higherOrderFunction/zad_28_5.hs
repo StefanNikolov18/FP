@@ -2,5 +2,5 @@
 която по списък от числа L = l1, l2, l3, ... намира списъка S = l1, (l1 +
 l2), (l1 + l2 + l3), ....-}
 
---sums :: [Int] -> [Int]
---sums list = zipWith (+) list
+sums :: [Int] -> [Int]
+sums list = head list : zipWith (+) (sums list) (tail list)
