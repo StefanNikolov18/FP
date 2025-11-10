@@ -126,7 +126,7 @@ foldr1 :: (a -> a -> a) -> [a] -> a
 foldr1 op (x : xs) = foldr op x xs
 
 foldl1 :: (a-> a -> a) -> [a] -> a
-foldl1 op (x : xs) = foldl op x xs
+foldl1 op (x : xs) = foldl op x xs  
 
 
 {-
@@ -166,7 +166,7 @@ groupBy f (x : xs) = (f x, x) : groupBy f xs
  връща всички подмножества от елементите на списъка.
 -}
 subset :: [a] -> [[a]]
-subset [] = [[]]
+subset [] = []
 subset (x : xs) = 
     let s = subset xs
     in map (x :) s ++ s
