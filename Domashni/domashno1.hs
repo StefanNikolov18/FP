@@ -17,10 +17,10 @@ hasSolution (LDE2 a b c) = c `rem` gcd a b == 0
 --1.1)
 concreteSolution :: LDE2 -> Maybe (Int,Int)
 concreteSolution (LDE2 a b c)
-    | not $ hasSolution (LDE2 a b c) = Nothing
+    | not $ hasSolution (LDE2 a b c) = Nothing              
     | otherwise = Just $ findSolution (LDE2 a b c) [0..]
         where
-            findSolution :: LDE2 -> [Int] -> (Int,Int)
+            findSolution :: LDE2 -> [Int] -> (Int,Int)      --(x <- [0..] , y = (c - a*x)/b)
             findSolution (LDE2 a b c) (x : xs) = 
                 let y = (c - a * x) `div` b
                 in if checkSolution (x,y) (LDE2 a b c) then (x,y) else findSolution (LDE2 a b c) xs
