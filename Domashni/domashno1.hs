@@ -11,22 +11,33 @@ data LDE2 = LDE2{
     c :: Int
 } deriving Show
 
-hasSolution :: LDE2 -> Bool
-hasSolution (LDE2 a b c) = c `rem` gcd a b == 0
 
---1.1)
+--1.1) Solution to LDE2
+
 concreteSolution :: LDE2 -> Maybe (Int,Int)
-concreteSolution (LDE2 a b c)
-    | not $ hasSolution (LDE2 a b c) = Nothing              
-    | otherwise = Just $ findSolution (LDE2 a b c) [0..]
-        where
-            findSolution :: LDE2 -> [Int] -> (Int,Int)      --(x <- [0..] , y = (c - a*x)/b)
-            findSolution (LDE2 a b c) (x : xs) = 
-                let y = (c - a * x) `div` b
-                in if checkSolution (x,y) (LDE2 a b c) then (x,y) else findSolution (LDE2 a b c) xs
+concreteSolution (LDE2 a b c) =
+    let (d, u, v) = extendedGCD a b
+    in if c `rem` d == 0 then Just (u * (c `div` d),v * (c `div` d)) else Nothing
+
+
+extendedGCD :: Int  -> Int -> (Int,Int,Int)
+extendedGCD a 0 = (a,1,0)
+extendedGCD a b = 
+    let (d, u, v) = extendedGCD b (a `mod` b)
+    in (d,v,u - (a `div` b) * v)
 
 checkSolution :: (Int,Int) -> LDE2 -> Bool
 checkSolution (x,y) (LDE2 a b c) = a*x + b*y == c
+
+{-test:
+    concreteSolution (LDE2 1 4 3)
+        Just (3,0)
+    
+    checkSolution (3,0) (LDE2 1 4 3)
+        True
+-}
+
+
 
 --1.2)
 diophantine :: LDE2 -> [(Int,Int)]
@@ -40,6 +51,13 @@ diophantine (LDE2 a b c) =
         where
             kSequence :: [Int]
             kSequence = concat [[n,-n] | n <- [1..]]
+
+{- test:
+    take 10 $ diophantine (LDE2 1 4 3)
+    [(3,0),(7,-1),(-1,1),(11,-2),(-5,2),(15,-3),(-9,3),(19,-4),(-13,4),(23,-5)]
+-}
+
+
 
 --1.3) formating
 prettyPrint :: LDE2 -> String
@@ -60,57 +78,101 @@ prettyPrint (LDE2 a b c) =
                 | x < 0 = show $ abs x
                 | otherwise = show x
 
+{-test:
+    prettyPrint (LDE2 1 4 3)
+        "1.x + 4.y = 3"
+
+    prettyPrint (LDE2 9 (-3) 6)
+        "9.x - 3.y = 6"
+-}
+
+
 
 --1.4) deserialization
-
+        
 toLDE2 :: String -> Maybe LDE2
-toLDE2 str
-    | not $ isValidLDE2String str = Nothing
-    | otherwise = Just $ parseLDE2 str
-
-
-isValidLDE2String :: String -> Bool
-isValidLDE2String str = 
-    '=' `elem` str && 
-    isValidTerm (words left) && 
-    isValidAfterEqual  (words right)
+toLDE2 s = 
+    let 
+        s' = dropWhile (== ' ') s
+        aIsMinus = not (null s') && head s' == '-'
+    in if aIsMinus 
+        then splitEquation (tail s') >>= \parts ->
+            parseTermsAndCheckRhs parts >>= \term ->
+            splitSign term >>= \partsSign -> 
+            validateTerms partsSign >>= (\res -> Just (updateA res))
+        else
+            splitEquation s' >>= \parts ->
+            parseTermsAndCheckRhs parts >>= \term ->
+            splitSign term >>= \partsSign -> 
+            validateTerms partsSign
         where
-            left = takeWhile (/= '=') str
-            right = tail $ dropWhile (/= '=') str
+            splitEquation :: String -> Maybe (String , String)
+            splitEquation str
+                | '=' `notElem` str = Nothing
+                | otherwise = Just (takeWhile (/= '=') str,tail $ dropWhile (/= '=') str)
+
+            parseTermsAndCheckRhs :: (String,String) -> Maybe (String,Int)      -- making rhs to word and check if is 1 elem and is digit                                                                   
+            parseTermsAndCheckRhs (term,rhs) =                                  -- then parse it
+                let inWords = words rhs
+                in if length inWords == 1 && all (`elem` digits) (head inWords)
+                        then Just (term, read (head inWords) :: Int) -- (term , c)
+                        else Nothing
+
+            digits :: String            -- set of digits and sign to check string if is a number 
+            digits = "-0123456789"
+
+            splitSign :: (String,Int) -> Maybe (String,String,Int,Bool)
+            splitSign (str,c)
+                | '+' `notElem` str && '-' `notElem` str = Nothing
+                | otherwise = 
+                     Just (takeWhile (\ch -> ch /= '+' && ch /= '-') str,
+                      tail $ dropWhile (\ch -> ch /= '+' && ch /= '-') str,c,'-' `elem` str) -- (term1,term2,c,isMinus)
             
-            isValidTerm :: [String] -> Bool
-            isValidTerm [term1, op, term2] = 
-                isValidFactor term1 && (op == "+" || op == "-") && isValidFactor term2
-            isValidTerm _ = False
-                
-            isValidFactor :: String -> Bool
-            isValidFactor term =
-                case break (== '.') term of
-                    (coef, '.': var) -> all isDigit coef && var `elem` ["x","y"]
-                    _ -> False
+            validateTerms :: (String,String,Int,Bool) -> Maybe LDE2
+            validateTerms (lhs,rhs,c,isMinus) = 
+                let 
+                    hasPointX = '.' `elem` lhs && 'x' `elem` tail (dropWhile (/= '.') lhs)
+                    hasPointY = '.' `elem` rhs && 'y' `elem` tail (dropWhile (/= '.') rhs)
+                in 
+                    if hasPointX && hasPointY
+                        then 
+                            let 
+                                a = takeWhile (/= '.') lhs 
+                                b = takeWhile (/= '.') rhs
+                            in 
+                                if all (`elem` digits) (head (words a)) && all (`elem` digits) (head (words b))
+                                    then 
+                                        if isMinus 
+                                            then Just (LDE2 (read (head (words a)) :: Int) (-(read (head (words b))) :: Int) c)
+                                            else Just (LDE2 (read (head (words a)) :: Int) (read (head (words b)) :: Int) c)
+                                    else Nothing
+                        else Nothing
 
-            isValidAfterEqual :: [String] -> Bool
-            isValidAfterEqual [num] = all isDigit num
-            isValidAfterEqual _ = False
+            updateA :: LDE2 -> LDE2
+            updateA (LDE2 a b c) = LDE2 {a = -a, b = b, c = c}
 
-            isDigit :: Char -> Bool
-            isDigit x = x >= '1' && x <= '9'
+{-test:
+    toLDE2 "1.x + 4.y = 3"
+        Just (LDE2 1 4 3)
+
+    toLDE2 "4.x- 3.y =     8"
+        Just (LDE2 4 (-3) 8)
+
+    toLDE2 "4 - 3.y = 1"
+        Nothing
+
+    toLDE2 "-4.x-7.y=10"        
+        Just (LDE2 (-4) (-7) 10)
+
+    toLDE2 "3.x + y = 5"       
+        Nothing 
+
+    toLDE2 "4.x-3.y= -7"       
+        Just (LDE2 4 (-3) (-7))
+-}
 
 
-parseLDE2 :: String -> LDE2
-parseLDE2 str =
-    let ws = words str                 -- ["3.x","+","4.y","=","5"]
-        l = head ws                    -- "3.x"
-        r = ws !! 2                    -- "4.y"
-        res = ws !! 4                  -- "5"
-    in LDE2
-        { a = toDigit l
-        , b = toDigit r
-        , c = read res                 
-        }
-  where
-    toDigit :: String -> Int
-    toDigit s = read (takeWhile (/= '.') s)
-           
-                
+
+
+    
                 
