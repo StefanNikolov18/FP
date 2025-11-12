@@ -9,11 +9,14 @@ data LDE2 = LDE2{
     a :: Int,
     b :: Int,
     c :: Int
-} deriving Show
+}
 
+instance Show LDE2 where
+    show :: LDE2 -> String
+    show (LDE2 a b c) = "(LDE2 " ++ show a ++ " " ++ show b ++ " " ++ show c ++ ")"
 
 --1.1) Solution to LDE2
-
+--a)
 concreteSolution :: LDE2 -> Maybe (Int,Int)
 concreteSolution (LDE2 a b c) =
     let (d, u, v) = extendedGCD a b
@@ -26,6 +29,8 @@ extendedGCD a b =
     let (d, u, v) = extendedGCD b (a `mod` b)
     in (d,v,u - (a `div` b) * v)
 
+
+--b)
 checkSolution :: (Int,Int) -> LDE2 -> Bool
 checkSolution (x,y) (LDE2 a b c) = a*x + b*y == c
 
@@ -50,7 +55,7 @@ diophantine (LDE2 a b c) =
     in  (x0,y0) : [(x0 + k * u , y0 - k * v) | k <- kSequence]
         where
             kSequence :: [Int]
-            kSequence = concat [[n,-n] | n <- [1..]]
+            kSequence = concat [[n,-n] | n <- [1..]]            -- kSequence = [1,-1,2,-2,3,-3..]
 
 {- test:
     take 10 $ diophantine (LDE2 1 4 3)
@@ -89,67 +94,76 @@ prettyPrint (LDE2 a b c) =
 
 
 --1.4) deserialization
+{-          '='      -}
+{-        /     \    -}
+{-      +/-       c  -}
+{-     /  \          -}
+{-   a.x  b.y        -}
+toLDE2 :: String -> Maybe LDE2                                            
+toLDE2 s =  do                                                             
+    let s' = dropWhile (== ' ') s                         -- take spaces upfront         
+        aIsMinus = not (null s') && head s' == '-'        -- check if a is with minus
+        input = if aIsMinus then tail s' else s'          -- cut the minus
+
+    parts <- splitEquation input                           -- "a.x + b.y" = term , c = "rhs"
+    term <- parseTermsAndCheckRhs parts
+    partsSign <- splitSign term
+    res <- validateTerms partsSign
+    
+    return $ if aIsMinus then negateA res else res
         
-toLDE2 :: String -> Maybe LDE2
-toLDE2 s = 
-    let 
-        s' = dropWhile (== ' ') s
-        aIsMinus = not (null s') && head s' == '-'
-    in if aIsMinus 
-        then splitEquation (tail s') >>= \parts ->
-            parseTermsAndCheckRhs parts >>= \term ->
-            splitSign term >>= \partsSign -> 
-            validateTerms partsSign >>= (\res -> Just (updateA res))
-        else
-            splitEquation s' >>= \parts ->
-            parseTermsAndCheckRhs parts >>= \term ->
-            splitSign term >>= \partsSign -> 
-            validateTerms partsSign
         where
-            splitEquation :: String -> Maybe (String , String)
+            digits :: String            -- set of digits and sign to check string if is a number 
+            digits = "-0123456789"
+
+            negateA :: LDE2 -> LDE2
+            negateA (LDE2 a b c) = LDE2 {a = -a, b = b, c = c}
+
+            splitEquation :: String -> Maybe (String , String)                           -- "a.x + b.y = c" -> ("a.x + b.y", "c") 
             splitEquation str
                 | '=' `notElem` str = Nothing
                 | otherwise = Just (takeWhile (/= '=') str,tail $ dropWhile (/= '=') str)
 
-            parseTermsAndCheckRhs :: (String,String) -> Maybe (String,Int)      -- making rhs to word and check if is 1 elem and is digit                                                                   
-            parseTermsAndCheckRhs (term,rhs) =                                  -- then parse it
-                let inWords = words rhs
+            parseTermsAndCheckRhs :: (String,String) -> Maybe (String,Int)      -- ("a.x + b.y", "c") -> ("a.x + b.y", c)                                                                
+            parseTermsAndCheckRhs (term,rhs) =                                  -- making rhs to word and check if is 1 elem and is digit
+                let inWords = words rhs                                         -- then parse it
                 in if length inWords == 1 && all (`elem` digits) (head inWords)
                         then Just (term, read (head inWords) :: Int) -- (term , c)
                         else Nothing
 
-            digits :: String            -- set of digits and sign to check string if is a number 
-            digits = "-0123456789"
-
-            splitSign :: (String,Int) -> Maybe (String,String,Int,Bool)
+            splitSign :: (String,Int) -> Maybe (String,String,Int,Bool)         -- (term,c) -> (term1,term2,c,isMinus)
             splitSign (str,c)
                 | '+' `notElem` str && '-' `notElem` str = Nothing
                 | otherwise = 
                      Just (takeWhile (\ch -> ch /= '+' && ch /= '-') str,
-                      tail $ dropWhile (\ch -> ch /= '+' && ch /= '-') str,c,'-' `elem` str && '+' `notElem` str) -- (term1,term2,c,isMinus)
+                      tail $ dropWhile (\ch -> ch /= '+' && ch /= '-') str,c,'-' `elem` str && '+' `notElem` str) 
             
-            validateTerms :: (String,String,Int,Bool) -> Maybe LDE2
+            validateTerms :: (String,String,Int,Bool) -> Maybe LDE2             --validate term1 and term2
             validateTerms (lhs,rhs,c,isMinus) = 
                 let 
-                    hasPointX = '.' `elem` lhs && 'x' `elem` tail (dropWhile (/= '.') lhs)
+                    hasPointX = '.' `elem` lhs && 'x' `elem` tail (dropWhile (/= '.') lhs) 
                     hasPointY = '.' `elem` rhs && 'y' `elem` tail (dropWhile (/= '.') rhs)
+
+                    is1DigitLhs  = length (words (takeWhile (/= '.') lhs)) == 1
+                    is1DigitRhs  = length (words (takeWhile (/= '.') rhs)) == 1
                 in 
-                    if hasPointX && hasPointY
+                    if (hasPointX && hasPointY) && (is1DigitLhs && is1DigitRhs) 
                         then 
-                            let 
-                                a = takeWhile (/= '.') lhs 
-                                b = takeWhile (/= '.') rhs
+                            let
+                                a = head (words (takeWhile (/= '.') lhs))       --take "a"
+                                b = head (words (takeWhile (/= '.') rhs))       --take "b"
+                                isDigitA = all (`elem` digits) a
+                                isDigitB = all (`elem` digits) b
                             in 
-                                if all (`elem` digits) (head (words a)) && all (`elem` digits) (head (words b))
+                                if  isDigitA && isDigitB 
                                     then 
                                         if isMinus 
-                                            then Just (LDE2 (read (head (words a)) :: Int) (-(read (head (words b))) :: Int) c)
-                                            else Just (LDE2 (read (head (words a)) :: Int) (read (head (words b)) :: Int) c)
+                                            then Just (LDE2 (read a:: Int) (-(read b:: Int)) c) -- b is with minus
+                                            else Just (LDE2 (read a :: Int) (read b :: Int) c)
                                     else Nothing
                         else Nothing
 
-            updateA :: LDE2 -> LDE2
-            updateA (LDE2 a b c) = LDE2 {a = -a, b = b, c = c}
+
 
 {-test:
     toLDE2 "1.x + 4.y = 3"
@@ -169,6 +183,13 @@ toLDE2 s =
 
     toLDE2 "4.x-3.y= -7"       
         Just (LDE2 4 (-3) (-7))
+
+    toLDE2 "         -0      .       x      -          -3       .      y         =               7"
+        Just (LDE2 0 3 7)
+
+    toLDE2 "3 4.x-3.y= -7"  
+        Nothing     
+        
 -}
 
 
@@ -178,8 +199,26 @@ data LDEn = LDEn{
     n :: Int,
     coefs :: [Int],
     rhs :: Int
-} deriving Show
+}
 
+instance Show LDEn where
+    show :: LDEn -> String
+    show (LDEn n l rhs) = "(LDEn " ++ show n ++ " " ++ show l ++ " " ++ show rhs ++ ")"
+
+
+generateLDE2FromLDEn :: [Int] -> LDEn -> [LDE2]
+generateLDE2FromLDEn ys (LDEn n coefs rhs) = 
+       [LDE2 {a = coefs !! xi ,b = coefs !! xj, c = remainder} | 
+        (xi,xj) <- fixCoefs n,
+        chosen <- combination (n - 2) ys,
+        let remainder = evalRemainder xi xj chosen
+       ]
+    where
+        evalRemainder :: Int -> Int -> [Int] -> Int
+        evalRemainder xi xj chosen = 
+            let remainingCoefs = removeAtIndexes [xi, xj] coefs
+            in sum (rhs : zipWith (*) chosen (map (*(-1)) remainingCoefs))
+            
 
 fixCoefs :: Int -> [(Int,Int)]
 fixCoefs n = [(xi,xj) | xi <- [0..n-2], xj <- [xi + 1..n-1]]
@@ -201,19 +240,9 @@ removeAtIndexes indexes list = removeAtIndexesHelper indexes (zip list [0..])
             let filtered = filter (\(_,index) -> index /= x) l
             in  removeAtIndexesHelper xs filtered
     
-
-generateLDE2FromLDEn :: [Int] -> LDEn -> [LDE2]
-generateLDE2FromLDEn ys (LDEn n coefs rhs) = 
-       [LDE2 {a = coefs !! xi ,b = coefs !! xj, c = remainder} | 
-        (xi,xj) <- fixCoefs n,
-        getRemainders <- combination (n - 2) ys,
-        remainder <- [ sum (rhs :map (*(-1)) (zipWith (*) getRemainders (removeAtIndexes [xi,xj] coefs)))]
-    ]
-    
-                
+  
 {-test:
     generateLDE2FromLDEn [1,2] (LDEn { n = 3, coefs = [1,4,1], rhs = 3 })
-        [LDE2 {a = 1, b = 4, c = 2},LDE2 {a = 1, b = 4, c = 1},LDE2 {a = 1, b = 1, c = -1},
-        LDE2 {a = 1, b = 1, c = -5},LDE2 {a = 4, b = 1, c = 2},LDE2 {a = 4, b = 1, c = 1}]
+        [(LDE2 1 4 2),(LDE2 1 4 1),(LDE2 1 1 -1),(LDE2 1 1 -5),(LDE2 4 1 2),(LDE2 4 1 1)]
 
 -}
