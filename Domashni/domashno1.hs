@@ -126,7 +126,7 @@ toLDE2 s =
                 | '+' `notElem` str && '-' `notElem` str = Nothing
                 | otherwise = 
                      Just (takeWhile (\ch -> ch /= '+' && ch /= '-') str,
-                      tail $ dropWhile (\ch -> ch /= '+' && ch /= '-') str,c,'-' `elem` str) -- (term1,term2,c,isMinus)
+                      tail $ dropWhile (\ch -> ch /= '+' && ch /= '-') str,c,'-' `elem` str && '+' `notElem` str) -- (term1,term2,c,isMinus)
             
             validateTerms :: (String,String,Int,Bool) -> Maybe LDE2
             validateTerms (lhs,rhs,c,isMinus) = 
@@ -172,7 +172,48 @@ toLDE2 s =
 -}
 
 
+--2) LDEN - Linear Diophantine Equation with N unknowns
+
+data LDEn = LDEn{
+    n :: Int,
+    coefs :: [Int],
+    rhs :: Int
+} deriving Show
 
 
+fixCoefs :: Int -> [(Int,Int)]
+fixCoefs n = [(xi,xj) | xi <- [0..n-2], xj <- [xi + 1..n-1]]
+
+combination :: Int -> [a] -> [[a]]
+combination 0 _ = [[]]
+combination _ [] = []
+combination k (x:xs)
+    | k < 0 = []
+    | otherwise = map (x :) (combination (k-1) xs) ++ combination k xs
+
+removeAtIndexes :: [Int] -> [Int] -> [Int]
+removeAtIndexes [] list = list
+removeAtIndexes indexes list = removeAtIndexesHelper indexes (zip list [0..])
+    where
+        removeAtIndexesHelper :: [Int] -> [(Int,Int)] -> [Int]
+        removeAtIndexesHelper [] l = map fst l
+        removeAtIndexesHelper (x : xs) l =
+            let filtered = filter (\(_,index) -> index /= x) l
+            in  removeAtIndexesHelper xs filtered
+    
+
+generateLDE2FromLDEn :: [Int] -> LDEn -> [LDE2]
+generateLDE2FromLDEn ys (LDEn n coefs rhs) = 
+       [LDE2 {a = coefs !! xi ,b = coefs !! xj, c = remainder} | 
+        (xi,xj) <- fixCoefs n,
+        getRemainders <- combination (n - 2) ys,
+        remainder <- [ sum (rhs :map (*(-1)) (zipWith (*) getRemainders (removeAtIndexes [xi,xj] coefs)))]
+    ]
     
                 
+{-test:
+    generateLDE2FromLDEn [1,2] (LDEn { n = 3, coefs = [1,4,1], rhs = 3 })
+        [LDE2 {a = 1, b = 4, c = 2},LDE2 {a = 1, b = 4, c = 1},LDE2 {a = 1, b = 1, c = -1},
+        LDE2 {a = 1, b = 1, c = -5},LDE2 {a = 4, b = 1, c = 2},LDE2 {a = 4, b = 1, c = 1}]
+
+-}
