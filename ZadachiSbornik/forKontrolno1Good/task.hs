@@ -74,3 +74,16 @@ hasAllEquals = any (\(x,y,z) -> (x == y) && (y == z))
 eqToIndex :: (Eq a,Enum a) => [a] -> [a]
 eqToIndex list = map fst (filter (\(x,index) -> x == toEnum index) (zip list [1..]))
 
+createfn :: Eq a => [(a,b)]->(a->b)
+createfn ((a1,b1) : ys) = \x -> if x == a1 then b1 else createfn ys x 
+
+member::Eq a => [a] -> (a -> Bool)
+member list = \x -> x `elem` list
+
+
+caseof :: [(a->Bool,a->b)] -> (a -> b)
+caseof [(_,f)] = \x -> f x
+caseof ((p,f) : pfs) = \x -> if p x then f x else caseof pfs x
+
+separate :: (a->Bool) -> [a] -> ([a],[a])
+separate p l= break (not . p) l
