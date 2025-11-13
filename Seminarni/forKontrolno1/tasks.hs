@@ -152,3 +152,56 @@ generateSumList k s = [x | x <- sequence (replicate k [0 .. s]) ,  sum x == s]
 permutation :: [Int] -> [[Int]]
 permutation [] = [[]]
 permutation list=  []
+
+
+data Student = Student{
+    fn :: String,
+    name :: String,
+    emain :: String,
+    phone :: Maybe String
+} deriving Show
+
+data Error = InvalidFnError | InvalidNameError | InvalidEmailError | InvalidPhoneError
+
+isJust :: Maybe a -> Bool
+isJust Nothing = False
+isJust _ = True
+
+fromJust :: Maybe a -> a
+fromJust (Just x) = x 
+
+catMaybes :: [Maybe a] -> [a]
+catMaybes = map fromJust . filter isJust
+
+
+createStudent :: String -> String -> String -> Maybe String -> Either [Error] Student
+createStudent fn name email phone = 
+    let invalid = catMaybes [validateFn fn,validateName name, validateEmail email, validatePhone phone]
+    in
+        if null invalid
+        then Right $ Student fn name email phone
+        else Left invalid
+    where
+        validateFn :: String -> Maybe Error
+        validateFn fn
+            | length fn == 10 = Nothing
+            | otherwise = Just InvalidFnError
+        
+        validateName :: String -> Maybe Error
+        validateName name
+            | length (words name) == 3 = Nothing
+            | otherwise = Just InvalidNameError 
+
+        validateEmail :: String -> Maybe Error
+        validateEmail email 
+            | let rest = dropWhile (/= '@') email
+              in not (null rest) && '.' `elem` rest = Nothing
+            | otherwise = Just InvalidEmailError
+            
+        validatePhone :: Maybe String -> Maybe Error
+        validatePhone = maybe Nothing validate  
+           where 
+                validate :: String -> Maybe Error
+                validate phone
+                  | head phone == '0' && length phone == 10 = Nothing
+                  | otherwise = Just InvalidPhoneError
