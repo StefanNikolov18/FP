@@ -105,9 +105,9 @@ toLDE2 s =  do
         aIsMinus = not (null s') && head s' == '-'        -- check if a is with minus
         input = if aIsMinus then tail s' else s'          -- cut the minus
 
-    parts <- splitEquation input                           -- "a.x + b.y" = term , c = "rhs"
-    term <- parseTermsAndCheckRhs parts
-    partsSign <- splitSign term
+    partsEq <- splitEquation input                           -- "a.x + b.y" = term , c = rhs
+    terms <- parseTermsAndCheckRhs partsEq
+    partsSign <- splitSign terms
     res <- validateTerms partsSign
     
     return $ if aIsMinus then negateA res else res
@@ -144,18 +144,18 @@ toLDE2 s =  do
                     hasPointX = '.' `elem` lhs && 'x' `elem` tail (dropWhile (/= '.') lhs) 
                     hasPointY = '.' `elem` rhs && 'y' `elem` tail (dropWhile (/= '.') rhs)
 
-                    is1DigitLhs  = length (words (takeWhile (/= '.') lhs)) == 1
-                    is1DigitRhs  = length (words (takeWhile (/= '.') rhs)) == 1
+                    is1WordLhs  = length (words (takeWhile (/= '.') lhs)) == 1
+                    is1WordRhs  = length (words (takeWhile (/= '.') rhs)) == 1
                 in 
-                    if (hasPointX && hasPointY) && (is1DigitLhs && is1DigitRhs) 
+                    if (hasPointX && hasPointY) && (is1WordLhs && is1WordRhs) 
                         then 
                             let
                                 a = head (words (takeWhile (/= '.') lhs))       --take "a"
                                 b = head (words (takeWhile (/= '.') rhs))       --take "b"
-                                isDigitA = all (`elem` digits) a
-                                isDigitB = all (`elem` digits) b
+                                isNumA = all (`elem` digits) a
+                                isNumB = all (`elem` digits) b
                             in 
-                                if  isDigitA && isDigitB 
+                                if  isNumA && isNumB 
                                     then 
                                         if isMinus 
                                             then Just (LDE2 (read a:: Int) (-(read b:: Int)) c) -- b is with minus
