@@ -1,6 +1,4 @@
-import GHC.Base (VecElem(Int16ElemRep))
-import GHC.Float (Floating(log1mexp))
-import Data.IntMap (mergeWithKey)
+
 sum' :: Int -> Int
 sum' 0 = 0
 sum' n = n + sum' (n - 1)
