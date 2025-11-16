@@ -97,8 +97,10 @@ prettyPrint (LDE2 a b c) =
 {-          '='      -}
 {-        /     \    -}
 {-      +/-       c  -}
-{-     /  \          -}
-{-   a.x  b.y        -}
+{-      / \          -}
+{-    .x   .y        -}
+{-    /      \       -}
+{-   a         b     -}
 toLDE2 :: String -> Maybe LDE2                                            
 toLDE2 s =  do                                                             
     let s' = dropWhile (== ' ') s                         -- take spaces upfront         
@@ -108,7 +110,8 @@ toLDE2 s =  do
     partsEq <- splitEquation input                           -- "a.x + b.y" = term , c = rhs
     terms <- parseTermsAndCheckRhs partsEq
     partsSign <- splitSign terms
-    res <- validateTerms partsSign
+    coefsTerms <- validateTermsHasPointXAndPointYAndPassCoef partsSign
+    res <- validateTermsAreNumbers coefsTerms
     
     return $ if aIsMinus then negateA res else res
         
@@ -138,30 +141,38 @@ toLDE2 s =  do
                      Just (takeWhile (\ch -> ch /= '+' && ch /= '-') str,
                       tail $ dropWhile (\ch -> ch /= '+' && ch /= '-') str,c,'-' `elem` str && '+' `notElem` str) 
             
-            validateTerms :: (String,String,Int,Bool) -> Maybe LDE2             --validate term1 and term2
-            validateTerms (lhs,rhs,c,isMinus) = 
-                let 
-                    hasPointX = '.' `elem` lhs && 'x' `elem` tail (dropWhile (/= '.') lhs) 
-                    hasPointY = '.' `elem` rhs && 'y' `elem` tail (dropWhile (/= '.') rhs)
-
-                    is1WordLhs  = length (words (takeWhile (/= '.') lhs)) == 1
-                    is1WordRhs  = length (words (takeWhile (/= '.') rhs)) == 1
+            validateTermsHasPointXAndPointYAndPassCoef :: (String,String,Int,Bool) -> Maybe (String,String,Int,Bool)
+            validateTermsHasPointXAndPointYAndPassCoef (lhs,rhs,c,isMinus) =
+                let
+                    hasPointBeforeXAndX = '.' `elem` lhs && 'x' `elem` tail (dropWhile (/= '.') lhs) 
+                    hasPointBeforeYAndY = '.' `elem` rhs && 'y' `elem` tail (dropWhile (/= '.') rhs)
                 in 
-                    if (hasPointX && hasPointY) && (is1WordLhs && is1WordRhs) 
-                        then 
-                            let
-                                a = head (words (takeWhile (/= '.') lhs))       --take "a"
-                                b = head (words (takeWhile (/= '.') rhs))       --take "b"
-                                isNumA = all (`elem` digits) a
-                                isNumB = all (`elem` digits) b
-                            in 
-                                if  isNumA && isNumB 
-                                    then 
-                                        if isMinus 
-                                            then Just (LDE2 (read a:: Int) (-(read b:: Int)) c) -- b is with minus
-                                            else Just (LDE2 (read a :: Int) (read b :: Int) c)
-                                    else Nothing
+                    if hasPointBeforeXAndX && hasPointBeforeYAndY
+                        then Just (takeWhile (/= '.') lhs,takeWhile (/= '.') rhs,c,isMinus)
                         else Nothing
+
+            validateTermsAreNumbers :: (String,String,Int,Bool) -> Maybe LDE2             --validate coefs are numbers in term1 and two
+            validateTermsAreNumbers (a,b,c,isMinus) = 
+                let 
+                    aInWords = words a
+                    bInWords = words b
+
+                    is1WordA  = length (words a) == 1
+                    is1WordB  = length (words b) == 1
+
+                    takeA = head aInWords
+                    takeB = head bInWords
+
+                    isNumA = is1WordA && all (`elem` digits) takeA
+                    isNumB = is1WordB && all (`elem` digits) takeB
+
+                in 
+                    if isNumA && isNumB 
+                        then if isMinus
+                            then Just (LDE2 (read takeA:: Int) (-(read takeB:: Int)) c) -- b is with minus
+                            else Just (LDE2 (read takeA :: Int) (read takeB :: Int) c)
+                        else Nothing
+                        
 
 
 
@@ -191,6 +202,7 @@ toLDE2 s =  do
         Nothing     
         
 -}
+
 
 
 --2) LDEN - Linear Diophantine Equation with N unknowns
