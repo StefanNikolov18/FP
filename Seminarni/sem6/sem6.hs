@@ -1,3 +1,4 @@
+
 import Prelude hiding (Functor,fmap,(<$>),Applicative,liftA2,(<*>))
 --test
 isPrime :: Int -> Bool
@@ -119,6 +120,11 @@ class Functor f => Aplicative f where
     liftA2 :: (a -> b -> c) -> f a -> f b -> f c
     liftA2 g fa fb = g <$> fa <*> fb 
 
+    (*>) :: f a -> f b -> f b
+    fa *> fb = liftA2 const fb fa 
+
+
+
     
 instance Aplicative Maybe where
 
@@ -130,4 +136,5 @@ instance Aplicative Maybe where
 
     pure :: a -> Maybe a
     pure = Just 
+
 
