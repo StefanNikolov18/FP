@@ -88,11 +88,9 @@ getRedCardsFromPlayer p= getRedCards $ getHand p
         getRedCards = filter isRedCard
 
 -- Задача 7: Да се напише функция, която генерира стандартно тесте за игра на белот
-isBelotCard :: Card -> Bool
-isBelotCard c = getRank c >= 7
 
 generateBelotCards :: [Card]
-generateBelotCards = filter isBelotCard generateCards
+generateBelotCards = filter (\card -> getRank card >= 7) generateCards
 
 -- Задача 8: Да се напише функция, която цепи тестето на подадено от играча място
 splitCardsOnPoint :: [Card] -> Int -> [Card]
@@ -228,8 +226,4 @@ whoTakeTheHand (p:ps) = whoTakeTheHandHelper (head (getHand p)) p ps
 
 -- Задача 13: Да се напише функция, която према ръка и играчите и размества списъка така,
 -- че взелият играч да е под ръка
-
-underHand :: [Card] -> [Player] -> [Player]
-underHand _ [] = []
-underHand kompots persons = underHand (getRol) (whoTakeTheHand)
 

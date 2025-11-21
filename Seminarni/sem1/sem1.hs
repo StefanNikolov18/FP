@@ -51,7 +51,7 @@ type Triple = (Int,Int,Double)
 evalTriplet :: Triple -> Double
 evalTriplet (x,y,z)
     | x == 0 = 0
-   -- | otherwise = fromIntegral (x/z) + fromIntegral y
+    | otherwise = (fromIntegral x / z) + fromIntegral y
 
  --7) Напишете оператор ~=, който проверява дали две рационални числа са приблизително равни.
 (~=) :: Double -> Double -> Bool
